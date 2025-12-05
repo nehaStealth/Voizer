@@ -1,0 +1,95 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+android {
+    namespace "com.voizer.voizer"
+    compileSdk 35
+    ndkVersion flutter.ndkVersion
+    android.experimentalProperties["android.ndk.suppressMinSdkVersionError"] = 21
+
+
+//    packagingOptions {
+//        exclude 'lib/armeabi-v7a/libagora_ai_denoise_extension.so'
+//        exclude 'lib/armeabi-v7a/libagora_spatial_audio_extension.so'
+//        exclude 'lib/armeabi-v7a/libagora_full_audio_format_extension.so'
+//        exclude 'lib/armeabi-v7a/libagora_dav1d_extension.so'
+//        exclude 'lib/armeabi-v7a/libagora_segmentation_extension.so'
+//        exclude 'lib/armeabi-v7a/libagora_fd_extension.so'
+//
+//        exclude 'lib/arm64-v8a/libagora_ai_denoise_extension.so'
+//        exclude 'lib/arm64-v8a/libagora_spatial_audio_extension.so'
+//        exclude 'lib/arm64-v8a/libagora_full_audio_format_extension.so'
+//        exclude 'lib/arm64-v8a/libagora_dav1d_extensiokn.so'
+//        exclude 'lib/arm64-v8a/libagora_segmentation_extension.so'
+//        exclude 'lib/arm64-v8a/libagora_fd_extension.so'
+//    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+
+    kotlinOptions {
+        jvmTarget = '11'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId "com.voizer.voizer"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
+        minSdkVersion 24
+        targetSdk 34
+        versionCode 5
+        versionName "1.0.5"
+        multiDexEnabled true
+
+        ndk {
+            abiFilters "armeabi-v7a","arm64-v8a"
+        }
+    }
+
+    buildTypes {
+        release {
+            // TODO: Add your own signing config for the release build.
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation 'com.android.support:multidex:2.0.1'
+    implementation 'com.google.firebase:firebase-core:21.1.1'
+}
+
+apply plugin: 'com.google.gms.google-services'
