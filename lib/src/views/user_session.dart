@@ -63,7 +63,7 @@ class UserSessionState extends StateMVC<UserSession>{
     // TODO: implement initState
     sessionController.getUserInfo();
     sessionController.joinSession(context);
-	  setState(() {
+    setState(() {
       WakelockPlus.enable();
     });
     super.initState();
@@ -129,8 +129,7 @@ class UserSessionState extends StateMVC<UserSession>{
                       borderRadius: BorderRadius.circular(5.0),
                       backgroundColor: HexColor(greenColor),
                       onClick: () async {
-                        await sessionController.leaveSession();
-                        Navigator.pushNamed(context, '/Home');
+                        await _leaveWithLoader(context);
                       },
                     ),
                     const SizedBox(width: 30.0),
@@ -218,8 +217,7 @@ class UserSessionState extends StateMVC<UserSession>{
                                 backgroundColor: HexColor(greenColor),
                                 onClick: () async {
                                   print(';;;;;;;;;;');
-                                  await sessionController.leaveSession();
-                                  Navigator.pushNamed(context, '/Home');
+                                  await _leaveWithLoader(context);
                                 },
                               ),
                               const SizedBox(width: 30.0),
@@ -377,8 +375,7 @@ class UserSessionState extends StateMVC<UserSession>{
                                               borderRadius: BorderRadius.circular(5.0),
                                               backgroundColor: HexColor(greenColor),
                                               onClick: () async {
-                                                await sessionController.leaveSession();
-                                                Navigator.pushNamed(context, '/Home');
+                                                await _leaveWithLoader(context);
                                               },
                                             ),
                                             const SizedBox(width: 30.0),
@@ -525,4 +522,23 @@ class UserSessionState extends StateMVC<UserSession>{
       ),
     );
   }
+
+
+  Future<void> _leaveWithLoader(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    await sessionController.leaveSession();
+
+    Navigator.pop(context); // close loader
+    Navigator.pushNamed(context, '/Home');
+  }
+
 }

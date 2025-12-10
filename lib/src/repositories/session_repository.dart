@@ -169,7 +169,7 @@ Future<http.Response> uploadUserRecording(String recordingFilePath, String recor
   request.headers.addAll({
     HttpHeaders.acceptHeader: 'application/json',
     HttpHeaders.contentTypeHeader: 'application/json',
-    HttpHeaders.authorizationHeader: 'Bearer $accessToken',
+    HttpHeaders.authorizationHeader: 'Bearer $accessToken', 
   });
 
   request.fields.addAll(map);
