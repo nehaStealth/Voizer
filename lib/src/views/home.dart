@@ -21,7 +21,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../helpers/global.dart';
 import 'livekit_page.dart';
 
-class HomePage extends StatefulWidget{
+class HomePage extends StatefulWidget {
   @override
   const HomePage({Key? key}) : super(key: key);
 
@@ -29,14 +29,13 @@ class HomePage extends StatefulWidget{
   State<StatefulWidget> createState() => HomeState();
 }
 
-class HomeState extends StateMVC<HomePage>{
+class HomeState extends StateMVC<HomePage> {
   HomeController homeCon = HomeController();
   Connectivity connectivity = Connectivity();
   String? roomId;
   String? service;
   Timer? _appStatusTimer;
   bool _isMaintenancePopupShown = false; // track if popup is active
-
 
   HomeState() : super(HomeController()) {
     homeCon = controller as HomeController;
@@ -45,9 +44,9 @@ class HomeState extends StateMVC<HomePage>{
   @override
   void initState() {
     // TODO: implement initState
-	homeCon.isOnHomePage = true;
+    homeCon.isOnHomePage = true;
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      if(message.data['type'] == 'disabled_user') {
+      if (message.data['type'] == 'disabled_user') {
         print('disabled ');
 
         logOut();
@@ -70,14 +69,12 @@ class HomeState extends StateMVC<HomePage>{
     super.initState();
   }
 
-
   void startAppStatusPolling() {
     // Poll every 10 seconds to check app Maintenance
     _appStatusTimer = Timer.periodic(Duration(seconds: 10), (_) async {
       await checkMaintenanceMode();
     });
   }
-
 
   //check app maintainenance mode api status
   Future<void> checkMaintenanceMode() async {
@@ -113,10 +110,10 @@ class HomeState extends StateMVC<HomePage>{
     }
   }
 
-
   Future<ConnectivityResult> checkInternetConnectivity() async {
-    ConnectivityResult connectivityStatus = await connectivity.checkConnectivity();
-    if(connectivityStatus == ConnectivityResult.none) {
+    ConnectivityResult connectivityStatus =
+        await connectivity.checkConnectivity();
+    if (connectivityStatus == ConnectivityResult.none) {
       showBGContentAlert(
         context: context,
         width: MediaQuery.of(context).size.width,
@@ -164,7 +161,6 @@ class HomeState extends StateMVC<HomePage>{
     return connectivityStatus;
   }
 
-
   Future<void> checkRoomId() async {
     try {
       int userId = await getUserId();
@@ -182,15 +178,15 @@ class HomeState extends StateMVC<HomePage>{
     }
   }
 
-
   initData() {
-    Future.delayed(Duration(seconds: 1)).then((value)  async {
+    Future.delayed(Duration(seconds: 1)).then((value) async {
       try {
         await homeCon.checkUserStatus();
-        if(homeCon.isUserActive) {
+        if (homeCon.isUserActive) {
           homeCon.getUserInfo();
-          homeCon.checkHostJoinedInfoTimer = Timer.periodic(Duration(seconds: 3), (timer) async {
-            if(homeCon.isOnHomePage == true){
+          homeCon.checkHostJoinedInfoTimer =
+              Timer.periodic(Duration(seconds: 3), (timer) async {
+            if (homeCon.isOnHomePage == true) {
               homeCon.getHostJoinedData();
             }
           });
@@ -205,7 +201,7 @@ class HomeState extends StateMVC<HomePage>{
             },
           );
         }
-      } catch(e) {
+      } catch (e) {
         print(e.toString());
       }
     });
@@ -333,7 +329,8 @@ class HomeState extends StateMVC<HomePage>{
             key: homeCon.scaffoldKey,
             backgroundColor: Colors.transparent,
             resizeToAvoidBottomInset: false,
-            bottomNavigationBar: CustomBottomBar(bgColor: HexColor(darkBlueColor)),
+            bottomNavigationBar:
+                CustomBottomBar(bgColor: HexColor(darkBlueColor)),
             body: Container(
               decoration: BoxDecoration(
                 color: Colors.transparent,
@@ -344,8 +341,10 @@ class HomeState extends StateMVC<HomePage>{
                 ),
               ),
               width: kIsWeb ? 600 : MediaQuery.of(context).size.width,
-              margin: const EdgeInsets.only(top: 80.0, left: 25.0, right: 25.0,bottom: 80),
-              padding: const EdgeInsets.only(right: 19,top: 19,left: 19,bottom: 30),
+              margin: const EdgeInsets.only(
+                  top: 80.0, left: 25.0, right: 25.0, bottom: 80),
+              padding: const EdgeInsets.only(
+                  right: 19, top: 19, left: 19, bottom: 30),
               child: Align(
                 alignment: Alignment.center,
                 child: SingleChildScrollView(
@@ -396,8 +395,10 @@ class HomeState extends StateMVC<HomePage>{
                                           print('logout clicked');
                                           logOut();
 
-                                          homeCon.checkHostJoinedInfoTimer?.cancel();
-                                          Navigator.pushNamed(context, '/Login');
+                                          homeCon.checkHostJoinedInfoTimer
+                                              ?.cancel();
+                                          Navigator.pushNamed(
+                                              context, '/Login');
                                         });
                                       },
                                     ),
@@ -423,12 +424,14 @@ class HomeState extends StateMVC<HomePage>{
                         },
                         child: Container(
                           alignment: Alignment.topRight,
-                          child: Image.asset('assets/icons/logout-2.png',height: 50,width: 50),
+                          child: Image.asset('assets/icons/logout-2.png',
+                              height: 50, width: 50),
                         ),
                       ),
                       const SizedBox(height: 41),
                       Container(
-                        padding: const EdgeInsets.only(top: 35,left: 20,right: 20,bottom: 25),
+                        padding: const EdgeInsets.only(
+                            top: 35, left: 20, right: 20, bottom: 25),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           image: DecorationImage(
@@ -442,9 +445,9 @@ class HomeState extends StateMVC<HomePage>{
                               text: TextSpan(
                                 text: 'Welcome ',
                                 style: montserratBold.copyWith(
-                                    color: whiteColor,fontSize: Dimensions.fontSizeOverLarge
-                                ),
-                                children:  <TextSpan>[
+                                    color: whiteColor,
+                                    fontSize: Dimensions.fontSizeOverLarge),
+                                children: <TextSpan>[
                                   TextSpan(
                                     text: '${homeCon.userName}!',
                                     style: montserratBold.copyWith(
@@ -472,7 +475,7 @@ class HomeState extends StateMVC<HomePage>{
                                   color: whiteColor,
                                   fontSize: Dimensions.fontSizeRate,
                                 ),
-                                children:  <TextSpan>[
+                                children: <TextSpan>[
                                   TextSpan(
                                     text: '${homeCon.hostName}',
                                     style: montserratBold.copyWith(
@@ -484,133 +487,156 @@ class HomeState extends StateMVC<HomePage>{
                               ),
                             ),
                             const SizedBox(height: 37.0),
-                            !homeCon.isHostJoined ? CustomButtonWidget(
-                              width: MediaQuery.of(context).size.width,
-                              height: 25.0,
-                              title: waitHostJoinTxt,
-                              border: null,
-                              titleColor: HexColor(mediumLightColor),
-                              fontSize: Dimensions.fontSizeLarge,
-                              borderRadius: BorderRadius.circular(6.0),
-                              backgroundColor: Colors.transparent,
-                              onClick: () {},
-                            ) : Container(),
-                            !homeCon.isHostJoined ? const SizedBox(height: 10.0) : Container(),
-                            homeCon.isHostJoined ? CustomButtonWidget(
-                              width: MediaQuery.of(context).size.width,
-                              height: 25.0,
-                              title: hostOnlineTxt,
-                              border: null,
-                              titleColor: HexColor(greenColor),
-                              fontSize: Dimensions.fontSizeLarge,
-                              borderRadius: BorderRadius.circular(6.0),
-                              backgroundColor: Colors.transparent,
-                              onClick: () {},
-                            ) : Container(),
-                            homeCon.isHostJoined ? const SizedBox(height: 15.0) : Container(),
-                            homeCon.isHostJoined ? CustomButtonWidget(
-                              width: MediaQuery.of(context).size.width,
-                              height: 47.0,
-                              title: joinRoomTxt,
-                              border: null,
-                              titleColor: whiteColor,
-                              fontSize: Dimensions.fontSizeLarge,
-                              borderRadius: BorderRadius.circular(6.0),
-                              backgroundColor: HexColor(mediumLightColor),
-                              onClick: () async {
-                                ConnectivityResult connectivityStatus = await checkInternetConnectivity();
-                                bool isHavePermission = true;
-                                if(connectivityStatus != ConnectivityResult.none) {
-                                  if(!await Permission.microphone.request().isGranted) {
-                                    isHavePermission = false;
-                                    await openAppSettings();
-                                  }
+                            !homeCon.isHostJoined
+                                ? CustomButtonWidget(
+                                    width: MediaQuery.of(context).size.width,
+                                    height: 25.0,
+                                    title: waitHostJoinTxt,
+                                    border: null,
+                                    titleColor: HexColor(mediumLightColor),
+                                    fontSize: Dimensions.fontSizeLarge,
+                                    borderRadius: BorderRadius.circular(6.0),
+                                    backgroundColor: Colors.transparent,
+                                    onClick: () {},
+                                  )
+                                : Container(),
+                            !homeCon.isHostJoined
+                                ? const SizedBox(height: 10.0)
+                                : Container(),
+                            homeCon.isHostJoined
+                                ? CustomButtonWidget(
+                                    width: MediaQuery.of(context).size.width,
+                                    height: 25.0,
+                                    title: hostOnlineTxt,
+                                    border: null,
+                                    titleColor: HexColor(greenColor),
+                                    fontSize: Dimensions.fontSizeLarge,
+                                    borderRadius: BorderRadius.circular(6.0),
+                                    backgroundColor: Colors.transparent,
+                                    onClick: () {},
+                                  )
+                                : Container(),
+                            homeCon.isHostJoined
+                                ? const SizedBox(height: 15.0)
+                                : Container(),
+                            homeCon.isHostJoined
+                                ? CustomButtonWidget(
+                                    width: MediaQuery.of(context).size.width,
+                                    height: 47.0,
+                                    title: joinRoomTxt,
+                                    border: null,
+                                    titleColor: whiteColor,
+                                    fontSize: Dimensions.fontSizeLarge,
+                                    borderRadius: BorderRadius.circular(6.0),
+                                    backgroundColor: HexColor(mediumLightColor),
+                                    onClick: () async {
+                                      ConnectivityResult connectivityStatus =
+                                          await checkInternetConnectivity();
+                                      bool isHavePermission = true;
+                                      if (connectivityStatus !=
+                                          ConnectivityResult.none) {
+                                        if (!await Permission.microphone
+                                            .request()
+                                            .isGranted) {
+                                          isHavePermission = false;
+                                          await openAppSettings();
+                                        }
 
-                                  // if(!await Permission.storage.request().isGranted) {
-                                  //   isHavePermission = false;
-                                  //   await openAppSettings();
-                                  // }
+                                        // if(!await Permission.storage.request().isGranted) {
+                                        //   isHavePermission = false;
+                                        //   await openAppSettings();
+                                        // }
 
-                                  if(!await homeCon.checkAppVersion(context)) {
-                                    print("TrueOne:");
-                                    isHavePermission = false;
-                                    showMessageAlert(
-                                      context: context,
-                                      isDismissable: false,
-                                      message: youUsingOldAppPleaseUpdateTxt,
-                                      onClick: () async {
-                                        if (!await launchUrl(Uri.parse(homeCon.appURL))) {
+                                        if (!await homeCon
+                                            .checkAppVersion(context)) {
+                                          print("TrueOne:");
+                                          isHavePermission = false;
                                           showMessageAlert(
                                             context: context,
-                                            message: appURLNotLaunchingContactAdminTxt,
+                                            isDismissable: false,
+                                            message:
+                                                youUsingOldAppPleaseUpdateTxt,
                                             onClick: () async {
-                                              Navigator.pop(context);
+                                              if (!await launchUrl(
+                                                  Uri.parse(homeCon.appURL))) {
+                                                showMessageAlert(
+                                                  context: context,
+                                                  message:
+                                                      appURLNotLaunchingContactAdminTxt,
+                                                  onClick: () async {
+                                                    Navigator.pop(context);
+                                                  },
+                                                );
+                                              }
                                             },
                                           );
                                         }
-                                      },
-                                    );
-                                  }
 
-                                  if (isHavePermission) {
-                                    if (service == "Agora") {
-                                      homeCon.checkHostJoinedInfoTimer?.cancel();
-                                      await Navigator.pushNamed(context, '/UserSession');
-                                      initData();
+                                        if (isHavePermission) {
+                                          homeCon.checkHostJoinedInfoTimer
+                                              ?.cancel();
+                                          await Navigator.pushNamed(
+                                              context, '/UserSession');
+                                          initData();
+                                          // if (service == "Agora") {
+                                          //   homeCon.checkHostJoinedInfoTimer?.cancel();
+                                          //   await Navigator.pushNamed(context, '/UserSession');
+                                          //   initData();
 
-                                      print("Agora:");
-                                    } else if (service == "livekit") {
-                                      homeCon.checkHostJoinedInfoTimer?.cancel();
+                                          //   print("Agora:");
+                                          // } else if (service == "livekit") {
+                                          //   homeCon.checkHostJoinedInfoTimer?.cancel();
 
-                                      String currentRoomId = await getLiveKitRoomId();
-                                      String savedLiveKitUrl = await getLiveKitURL();
-                                      String hostIdentity = await getHostName();
-                                      print("Livekit Url: $savedLiveKitUrl");
-                                      print("Host identity: $hostIdentity");
-                                      if (currentRoomId.isEmpty) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text("Room ID not ready yet. Please wait.")),
-                                        );
-                                        return;
+                                          //   String currentRoomId = await getLiveKitRoomId();
+                                          //   String savedLiveKitUrl = await getLiveKitURL();
+                                          //   String hostIdentity = await getHostName();
+                                          //   print("Livekit Url: $savedLiveKitUrl");
+                                          //   print("Host identity: $hostIdentity");
+                                          //   if (currentRoomId.isEmpty) {
+                                          //     ScaffoldMessenger.of(context).showSnackBar(
+                                          //       SnackBar(content: Text("Room ID not ready yet. Please wait.")),
+                                          //     );
+                                          //     return;
+                                          //   }
+
+                                          //   final data = await homeCon.fetchLiveKitToken(currentRoomId);
+                                          //   if (data != null && data['token'] != null && data['room_id'] != null) {
+                                          //     final token = data['token'];
+
+                                          //     // ✅ Navigate to CustomerLiveKitPage
+                                          //     await Navigator.push(
+                                          //       context,
+                                          //       MaterialPageRoute(
+                                          //         builder: (_) => CustomerLiveKitPage(
+                                          //           url: savedLiveKitUrl,
+                                          //           token: token,
+                                          //           roomId: currentRoomId, // fixed to use the actual room ID
+                                          //           hostIdentity: "",
+                                          //         ),
+                                          //       ),
+                                          //     );
+                                          //   } else {
+                                          //     showMessageAlert(
+                                          //       context: context,
+                                          //       message: "Failed to join call. Please try again.",
+                                          //       onClick: () {
+                                          //         Navigator.pop(context);
+                                          //       },
+                                          //     );
+                                          //   }
+
+                                          //   initData();
+
+                                          //   print("lIVEKIT");
+
+                                          // }
+                                          // ✅ Add this print statement outside the condition
+                                          print("Service: $service");
+                                        }
                                       }
-
-                                      final data = await homeCon.fetchLiveKitToken(currentRoomId);
-                                      if (data != null && data['token'] != null && data['room_id'] != null) {
-                                        final token = data['token'];
-
-                                        // ✅ Navigate to CustomerLiveKitPage
-                                        await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => CustomerLiveKitPage(
-                                              url: savedLiveKitUrl,
-                                              token: token,
-                                              roomId: currentRoomId, // fixed to use the actual room ID
-                                              hostIdentity: "",
-                                            ),
-                                          ),
-                                        );
-                                      } else {
-                                        showMessageAlert(
-                                          context: context,
-                                          message: "Failed to join call. Please try again.",
-                                          onClick: () {
-                                            Navigator.pop(context);
-                                          },
-                                        );
-                                      }
-
-                                      initData();
-
-                                      print("lIVEKIT");
-
-                                    }
-                                    // ✅ Add this print statement outside the condition
-                                    print("Service: $service");
-                                  }
-                                }
-                              },
-                            ) : Container(),
+                                    },
+                                  )
+                                : Container(),
                           ],
                         ),
                       ),
@@ -626,7 +652,8 @@ class HomeState extends StateMVC<HomePage>{
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              Image.asset('assets/icons/recordings.png',height: 60,width: 60),
+                              Image.asset('assets/icons/recordings.png',
+                                  height: 60, width: 60),
                               const SizedBox(width: 27),
                               Text(
                                 yourRecordingTxt,
@@ -652,7 +679,8 @@ class HomeState extends StateMVC<HomePage>{
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.start,
                             children: [
-                              Image.asset('assets/icons/settings.png',height: 60,width: 60),
+                              Image.asset('assets/icons/settings.png',
+                                  height: 60, width: 60),
                               const SizedBox(width: 27),
                               Text(
                                 settingTxt,
@@ -668,9 +696,7 @@ class HomeState extends StateMVC<HomePage>{
                       ),
                     ],
                   ),
-
                 ),
-
 
                 // child: SingleChildScrollView(
                 // child: Column(
