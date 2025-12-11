@@ -96,7 +96,7 @@ class SessionManagementController extends ControllerMVC {
   }
 
   Future<void> changeAudioState(bool isMutedMic) async {
-    ///  UNMUTE (User starts speaking) 
+    ///  UNMUTE (User starts speaking)
     if (isMutedMic) {
       // Already unmuted & recording → do nothing
       if (isRecording) return;
@@ -157,7 +157,7 @@ class SessionManagementController extends ControllerMVC {
       });
     }
 
-    // MUTE (User stops speaking) 
+    // MUTE (User stops speaking)
     else {
       if (!isRecording) {
         // User muted without recording
@@ -176,18 +176,22 @@ class SessionManagementController extends ControllerMVC {
 
       // Update Firebase
       final event = await reference.orderByChild('id').equalTo(uid).once();
+
       if (event.snapshot.value != null) {
         final Map<dynamic, dynamic> values =
             event.snapshot.value as Map<dynamic, dynamic>;
 
         for (final key in values.keys) {
           await reference.child(key).update({
+            'id': uid,
+            'name': await getUserName(),
+            'host_name': await getHostName(),
+            'host_id': await getHostId(),
             'isMuted': true,
             'Event2': 'trigger2',
           });
         }
       }
-
       // Stop & upload current recording
       await _stopRecordingAndUpload();
     }
