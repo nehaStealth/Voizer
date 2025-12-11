@@ -106,16 +106,40 @@ class SessionManagementController extends ControllerMVC {
       });
 
       await agoraEngine.muteLocalAudioStream(false);
+      
       await agoraEngine.enableLocalAudio(true);
+
+       try {
+      // 1) Set audio profile & scenario (these are named parameters)
+      await agoraEngine.setAudioProfile(
+        profile: AudioProfileType.audioProfileSpeechStandard,
+        scenario: AudioScenarioType.audioScenarioChatroom,
+      );
+      await agoraEngine.setParameters(
+        '{"rtc.audio.aec.enable":true,'
+        '"rtc.audio.ans.enable":true,'
+        '"rtc.audio.agc.enable":true}'
+      );
+      await agoraEngine.setParameters(
+        '{"che.audio.ai_noise_suppression": {"enable":true, "mode":2}}'
+      );
+
+      debugPrint("Audio profile and noise suppression set");
+    } catch (e) {
+      // safe fallback: log but continue — your original flow will still work
+      debugPrint("Could not fully configure noise suppression: $e");
+    }
+
+
 
       // Update Firebase
       final event = await reference.orderByChild('id').equalTo(uid).once();
       if (event.snapshot.value != null) {
         final Map<dynamic, dynamic> values =
             event.snapshot.value as Map<dynamic, dynamic>;
-
+          
         for (final key in values.keys) {
-          await reference.child(key).update({
+         await reference.child(key).update({
             'id': uid,
             'name': await getUserName(),
             'host_name': await getHostName(),
@@ -123,7 +147,9 @@ class SessionManagementController extends ControllerMVC {
             'isMuted': false,
             'Event': 'Trigger',
           });
+          
         }
+        
       }
 
       // Permission check
