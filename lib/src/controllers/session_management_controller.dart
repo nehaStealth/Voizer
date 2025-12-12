@@ -95,78 +95,64 @@ class SessionManagementController extends ControllerMVC {
     setState(() {});
   }
 
-  Future<void> changeAudioState(bool isMutedMic) async {
-    ///  UNMUTE (User starts speaking)
-    if (isMutedMic) {
-      // Already unmuted & recording → do nothing
-      if (isRecording) return;
+  // Debounce timer for Firebase writes
+  Timer? _micUpdateTimer;
 
-      setState(() {
-        isMuted = false;
-      });
+  Future<void> changeAudioState(bool isMutedMic) async {
+    final userId = uid;
+    final name = await getUserName();
+    final hostName = await getHostName();
+    final hostId = await getHostId();
+    final uniqueUserId = '${userId}_${hostId}_${hostName}';
+
+    // -----------------------------
+    // 🔹 UNMUTE (User starts speaking)
+    // -----------------------------
+    if (isMutedMic) {
+      if (isRecording) return; // Guard against multiple calls
+
+      setState(() => isMuted = false);
 
       await agoraEngine.muteLocalAudioStream(false);
-      
       await agoraEngine.enableLocalAudio(true);
 
-       try {
-      // 1) Set audio profile & scenario (these are named parameters)
-      await agoraEngine.setAudioProfile(
-        profile: AudioProfileType.audioProfileSpeechStandard,
-        scenario: AudioScenarioType.audioScenarioChatroom,
-      );
-      await agoraEngine.setParameters(
-        '{"rtc.audio.aec.enable":true,'
-        '"rtc.audio.ans.enable":true,'
-        '"rtc.audio.agc.enable":true}'
-      );
-      await agoraEngine.setParameters(
-        '{"che.audio.ai_noise_suppression": {"enable":true, "mode":2}}'
-      );
+      try {
+        await agoraEngine.setAudioProfile(
+          profile: AudioProfileType.audioProfileSpeechStandard,
+          scenario: AudioScenarioType.audioScenarioChatroom,
+        );
 
-      debugPrint("Audio profile and noise suppression set");
-    } catch (e) {
-      // safe fallback: log but continue — your original flow will still work
-      debugPrint("Could not fully configure noise suppression: $e");
-    }
+        await agoraEngine.setParameters(
+            '{"rtc.audio.aec.enable":true,"rtc.audio.ans.enable":true,"rtc.audio.agc.enable":true}');
 
+        await agoraEngine.setParameters(
+            '{"che.audio.ai_noise_suppression":{"enable":true,"mode":2}}');
+      } catch (_) {}
 
-
-      // Update Firebase
-      final event = await reference.orderByChild('id').equalTo(uid).once();
-      if (event.snapshot.value != null) {
-        final Map<dynamic, dynamic> values =
-            event.snapshot.value as Map<dynamic, dynamic>;
-          
-        for (final key in values.keys) {
-         await reference.child(key).update({
-            'id': uid,
-            'name': await getUserName(),
-            'host_name': await getHostName(),
-            'host_id': await getHostId(),
-            'isMuted': false,
-            'Event': 'Trigger',
-          });
-          
-        }
-        
-      }
-
-      // Permission check
-      if (!(kIsWeb || await Permission.storage.request().isGranted)) return;
-
-      DateTime dateTime = DateTime.now();
-      final directory = await getApplicationDocumentsDirectory();
-      await Directory("${directory.path}/recordings").create(recursive: true);
-      recordingFileName = DateFormat('yyyy-MM-dd hh:mm:ss a').format(dateTime);
-      recordingFilePath = '${directory.path}/recordings/$recordingFileName.aac';
-      setState(() {
-        recordingFilePath =
-            '${directory.path}/recordings/$recordingFileName.aac';
-        recordingFileName = recordingFileName;
+      // 🔥 Update Firebase with debounce (300ms)
+      _micUpdateTimer?.cancel();
+      _micUpdateTimer = Timer(const Duration(milliseconds: 300), () async {
+        await _updateUserMuteStatus(
+          userId: userId,
+          name: name,
+          hostId: hostId,
+          hostName: hostName,
+          uniqueUserId: uniqueUserId,
+          isMuted: false,
+        );
       });
 
-      debugPrint('Recording started → $recordingFileName');
+      // -----------------------------
+      // 🎙 START Recording
+      // -----------------------------
+      if (!(kIsWeb || await Permission.storage.request().isGranted)) return;
+
+      final directory = await getApplicationDocumentsDirectory();
+      await Directory("${directory.path}/recordings").create(recursive: true);
+
+      DateTime dt = DateTime.now();
+      recordingFileName = DateFormat('yyyy-MM-dd hh:mm:ss a').format(dt);
+      recordingFilePath = '${directory.path}/recordings/$recordingFileName.aac';
 
       await agoraEngine.startAudioRecording(
         AudioRecordingConfiguration(
@@ -178,50 +164,220 @@ class SessionManagementController extends ControllerMVC {
         ),
       );
 
-      setState(() {
-        isRecording = true;
-      });
+      setState(() => isRecording = true);
+      return;
     }
 
-    // MUTE (User stops speaking)
-    else {
-      if (!isRecording) {
-        // User muted without recording
-        setState(() => isMuted = true);
-        await agoraEngine.muteLocalAudioStream(true);
-        await agoraEngine.enableLocalAudio(false);
-        return;
-      }
-
-      setState(() {
-        isMuted = true;
-      });
-
+    // -----------------------------
+    // 🔹 MUTE (User stops speaking)
+    // -----------------------------
+    if (!isRecording) {
+      // User muted without recording → basic mute
+      setState(() => isMuted = true);
       await agoraEngine.muteLocalAudioStream(true);
       await agoraEngine.enableLocalAudio(false);
 
-      // Update Firebase
-      final event = await reference.orderByChild('id').equalTo(uid).once();
+      // Update Firebase debounce
+      _micUpdateTimer?.cancel();
+      _micUpdateTimer = Timer(const Duration(milliseconds: 300), () async {
+        await _updateUserMuteStatus(
+          userId: userId,
+          name: name,
+          hostId: hostId,
+          hostName: hostName,
+          uniqueUserId: uniqueUserId,
+          isMuted: true,
+        );
+      });
+      return;
+    }
 
-      if (event.snapshot.value != null) {
-        final Map<dynamic, dynamic> values =
-            event.snapshot.value as Map<dynamic, dynamic>;
+    // Full mute + stop recording
+    setState(() => isMuted = true);
 
-        for (final key in values.keys) {
-          await reference.child(key).update({
-            'id': uid,
-            'name': await getUserName(),
-            'host_name': await getHostName(),
-            'host_id': await getHostId(),
-            'isMuted': true,
-            'Event2': 'trigger2',
-          });
-        }
-      }
-      // Stop & upload current recording
-      await _stopRecordingAndUpload();
+    await agoraEngine.muteLocalAudioStream(true);
+    await agoraEngine.enableLocalAudio(false);
+
+    // Firebase update
+    _micUpdateTimer?.cancel();
+    _micUpdateTimer = Timer(const Duration(milliseconds: 300), () async {
+      await _updateUserMuteStatus(
+        userId: userId,
+        name: name,
+        hostId: hostId,
+        hostName: hostName,
+        uniqueUserId: uniqueUserId,
+        isMuted: true,
+      );
+    });
+
+    // Stop recording & upload
+    await _stopRecordingAndUpload();
+  }
+
+// -------------------------------------------------------------
+// 🔥 New helper: Safe Firebase update with fallback + no forEach
+// -------------------------------------------------------------
+  Future<void> _updateUserMuteStatus({
+    required int userId,
+    required String name,
+    required int hostId,
+    required String hostName,
+    required String uniqueUserId,
+    required bool isMuted,
+  }) async {
+    final snap = await reference
+        .orderByChild('uniqueUserId')
+        .equalTo(uniqueUserId)
+        .once();
+
+    // CREATE record if missing
+    if (snap.snapshot.value == null) {
+      await reference.push().set({
+        'id': userId,
+        'name': name,
+        'host_name': hostName,
+        'host_id': hostId,
+        'isMuted': isMuted,
+        'uniqueUserId': uniqueUserId,
+      });
+      return;
+    }
+
+    // UPDATE existing record
+    final Map data = snap.snapshot.value as Map;
+    for (final key in data.keys) {
+      await reference.child(key).update({
+        'isMuted': isMuted,
+      });
     }
   }
+
+  // Future<void> changeAudioState(bool isMutedMic) async {
+  //   ///  UNMUTE (User starts speaking)
+  //   if (isMutedMic) {
+  //     // Already unmuted & recording → do nothing
+  //     if (isRecording) return;
+
+  //     setState(() {
+  //       isMuted = false;
+  //     });
+
+  //     await agoraEngine.muteLocalAudioStream(false);
+
+  //     await agoraEngine.enableLocalAudio(true);
+
+  //      try {
+  //     // 1) Set audio profile & scenario (these are named parameters)
+  //     await agoraEngine.setAudioProfile(
+  //       profile: AudioProfileType.audioProfileSpeechStandard,
+  //       scenario: AudioScenarioType.audioScenarioChatroom,
+  //     );
+  //     await agoraEngine.setParameters(
+  //       '{"rtc.audio.aec.enable":true,'
+  //       '"rtc.audio.ans.enable":true,'
+  //       '"rtc.audio.agc.enable":true}'
+  //     );
+  //     await agoraEngine.setParameters(
+  //       '{"che.audio.ai_noise_suppression": {"enable":true, "mode":2}}'
+  //     );
+
+  //     debugPrint("Audio profile and noise suppression set");
+  //   } catch (e) {
+  //     // safe fallback: log but continue — your original flow will still work
+  //     debugPrint("Could not fully configure noise suppression: $e");
+  //   }
+
+  //     // Update Firebase
+  //     final event = await reference.orderByChild('id').equalTo(uid).once();
+  //     if (event.snapshot.value != null) {
+  //       final Map<dynamic, dynamic> values =
+  //           event.snapshot.value as Map<dynamic, dynamic>;
+
+  //       for (final key in values.keys) {
+  //        await reference.child(key).update({
+  //           'id': uid,
+  //           'name': await getUserName(),
+  //           'host_name': await getHostName(),
+  //           'host_id': await getHostId(),
+  //           'isMuted': false,
+  //           'Event': 'Trigger',
+  //         });
+
+  //       }
+
+  //     }
+
+  //     // Permission check
+  //     if (!(kIsWeb || await Permission.storage.request().isGranted)) return;
+
+  //     DateTime dateTime = DateTime.now();
+  //     final directory = await getApplicationDocumentsDirectory();
+  //     await Directory("${directory.path}/recordings").create(recursive: true);
+  //     recordingFileName = DateFormat('yyyy-MM-dd hh:mm:ss a').format(dateTime);
+  //     recordingFilePath = '${directory.path}/recordings/$recordingFileName.aac';
+  //     setState(() {
+  //       recordingFilePath =
+  //           '${directory.path}/recordings/$recordingFileName.aac';
+  //       recordingFileName = recordingFileName;
+  //     });
+
+  //     debugPrint('Recording started → $recordingFileName');
+
+  //     await agoraEngine.startAudioRecording(
+  //       AudioRecordingConfiguration(
+  //         filePath: recordingFilePath,
+  //         encode: true,
+  //         fileRecordingType: AudioFileRecordingType.audioFileRecordingMixed,
+  //         quality: AudioRecordingQualityType.audioRecordingQualityHigh,
+  //         sampleRate: 44100,
+  //       ),
+  //     );
+
+  //     setState(() {
+  //       isRecording = true;
+  //     });
+  //   }
+
+  //   // MUTE (User stops speaking)
+  //   else {
+  //     if (!isRecording) {
+  //       // User muted without recording
+  //       setState(() => isMuted = true);
+  //       await agoraEngine.muteLocalAudioStream(true);
+  //       await agoraEngine.enableLocalAudio(false);
+  //       return;
+  //     }
+
+  //     setState(() {
+  //       isMuted = true;
+  //     });
+
+  //     await agoraEngine.muteLocalAudioStream(true);
+  //     await agoraEngine.enableLocalAudio(false);
+
+  //     // Update Firebase
+  //     final event = await reference.orderByChild('id').equalTo(uid).once();
+
+  //     if (event.snapshot.value != null) {
+  //       final Map<dynamic, dynamic> values =
+  //           event.snapshot.value as Map<dynamic, dynamic>;
+
+  //       for (final key in values.keys) {
+  //         await reference.child(key).update({
+  //           'id': uid,
+  //           'name': await getUserName(),
+  //           'host_name': await getHostName(),
+  //           'host_id': await getHostId(),
+  //           'isMuted': true,
+  //           'Event2': 'trigger2',
+  //         });
+  //       }
+  //     }
+  //     // Stop & upload current recording
+  //     await _stopRecordingAndUpload();
+  //   }
+  // }
 
   // Helper function moved to class level
   Future<void> _stopRecordingAndUpload() async {
