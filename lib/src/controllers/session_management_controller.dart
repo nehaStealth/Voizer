@@ -145,7 +145,10 @@ class SessionManagementController extends ControllerMVC {
       // -----------------------------
       // 🎙 START Recording
       // -----------------------------
-      if (!(kIsWeb || await Permission.storage.request().isGranted)) return;
+      if (!await _requestRecordingPermissions()) {
+        debugPrint("Recording permission denied");
+        return;
+      }
 
       final directory = await getApplicationDocumentsDirectory();
       await Directory("${directory.path}/recordings").create(recursive: true);
@@ -213,6 +216,26 @@ class SessionManagementController extends ControllerMVC {
 
     // Stop recording & upload
     await _stopRecordingAndUpload();
+  }
+
+  Future<bool> _requestRecordingPermissions() async {
+    if (kIsWeb) return true;
+
+    if (Platform.isAndroid) {
+      final mic = await Permission.microphone.request();
+      final audio = await Permission.audio.request();
+
+      // Android 13+
+      if (await Permission.manageExternalStorage.isDenied) {
+        await Permission.manageExternalStorage.request();
+      }
+
+      return mic.isGranted && audio.isGranted;
+    }
+
+    // iOS
+    final mic = await Permission.microphone.request();
+    return mic.isGranted;
   }
 
 // -------------------------------------------------------------
@@ -385,18 +408,39 @@ class SessionManagementController extends ControllerMVC {
       debugPrint('Upload skipped (guard) - No active recording');
       return;
     }
-
+    _isRecordingInProgress = true;
     try {
       debugPrint('Recording stopped');
       await agoraEngine.stopAudioRecording();
 
-      if (recordingFilePath.isNotEmpty &&
-          File(recordingFilePath).existsSync()) {
-        debugPrint('Upload started - $recordingFileName');
-        await repository.uploadUserRecording(
-            recordingFilePath, recordingFileName);
-        debugPrint('Upload succeeded - $recordingFileName');
+      if (recordingFilePath.isEmpty) return;
+
+      final file = File(recordingFilePath);
+
+// ⏳ wait until Agora flushes file
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (!file.existsSync()) {
+        debugPrint('Recording file not found');
+        return;
       }
+
+      if (file.lengthSync() < 1024) {
+        debugPrint('Recording file too small, skipping upload');
+        return;
+      }
+
+      await repository.uploadUserRecording(
+          recordingFilePath, recordingFileName);
+      debugPrint('Upload succeeded - $recordingFileName');
+
+      // if (recordingFilePath.isNotEmpty &&
+      //     File(recordingFilePath).existsSync()) {
+      //   debugPrint('Upload started - $recordingFileName');
+      //   await repository.uploadUserRecording(
+      //       recordingFilePath, recordingFileName);
+      //   debugPrint('Upload succeeded - $recordingFileName');
+      // }
 
       setState(() {
         isRecording = false;
@@ -467,10 +511,16 @@ class SessionManagementController extends ControllerMVC {
         onLocalAudioStateChanged: (connection, state, error) {
           if (state == LocalAudioStreamState.localAudioStreamStateStopped ||
               state == LocalAudioStreamState.localAudioStreamStateFailed) {
-            if (isRecording) {
-              debugPrint('Agora audio stopped unexpectedly');
+            // if (isRecording) {
+            //   debugPrint('Agora audio stopped unexpectedly');
+            //   _stopRecordingAndUpload();
+            //   setState(() => isRecording = false);
+            // }
+            if (state == LocalAudioStreamState.localAudioStreamStateStopped &&
+                isRecording &&
+                !isMuted) {
+              debugPrint('Audio stopped unexpectedly, forcing cleanup');
               _stopRecordingAndUpload();
-              setState(() => isRecording = false);
             }
           }
         },
