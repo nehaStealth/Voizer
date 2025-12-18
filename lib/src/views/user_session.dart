@@ -465,12 +465,12 @@ class UserSessionState extends StateMVC<UserSession> {
                                 hostIndex != -1
                                     ? Column(
                                         children: [
-                                          GestureDetector(
+                                          Listener(
                                             behavior:
                                                 HitTestBehavior.translucent,
 
-                                            // User starts holding
-                                            onLongPressStart: (_) {
+                                            // Finger touches screen → UNMUTE
+                                            onPointerDown: (_) {
                                               setState(() {
                                                 sessionController
                                                     .isUserHoldButton = true;
@@ -480,8 +480,8 @@ class UserSessionState extends StateMVC<UserSession> {
                                                       true); // UNMUTE
                                             },
 
-                                            // User stops holding
-                                            onLongPressEnd: (_) {
+                                            // Finger lifts → MUTE
+                                            onPointerUp: (_) {
                                               setState(() {
                                                 sessionController
                                                     .isUserHoldButton = false;
@@ -491,11 +491,16 @@ class UserSessionState extends StateMVC<UserSession> {
                                                       false); // MUTE
                                             },
 
-                                            //  Disable single tap
-                                            onTap: () {},
-                                            onDoubleTap: () {},
-                                            onTapDown: (_) {},
-                                            onTapUp: (_) {},
+                                            // Safety: finger leaves widget area
+                                            onPointerCancel: (_) {
+                                              setState(() {
+                                                sessionController
+                                                    .isUserHoldButton = false;
+                                              });
+                                              sessionController
+                                                  .changeAudioState(
+                                                      false); // MUTE
+                                            },
 
                                             child: Image.asset(
                                               sessionController.isMuted

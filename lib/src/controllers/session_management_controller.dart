@@ -44,12 +44,14 @@ class SessionManagementController extends ControllerMVC {
     setState(() {});
   }
 
-  joinSession(context) async {
+ Future<bool> joinSession(BuildContext context) async {
+  try {
     uid = await getUserId();
     token = await repository.generateRoomToken();
     appId = await getAppId();
     hostUserId = await getHostId();
     channelName = await getChannelName();
+
     setState(() {});
     await initEngine(context);
 
@@ -65,12 +67,16 @@ class SessionManagementController extends ControllerMVC {
       uid: uid,
     );
 
-    if (await Permission.microphone.request().isGranted) {
-      setState(() {
-        isMuted = true;
-      });
+    // 🎤 Permission handling → BOOLEAN
+    final micGranted = await Permission.microphone.request().isGranted;
+
+    if (micGranted) {
+      isMuted = true;
       await agoraEngine.muteLocalAudioStream(true);
       await agoraEngine.enableLocalAudio(false);
+    } else {
+      debugPrint('❌ Microphone permission denied');
+      return false;
     }
 
     await agoraEngine.setAudioProfile(
@@ -78,8 +84,14 @@ class SessionManagementController extends ControllerMVC {
       scenario: AudioScenarioType.audioScenarioChatroom,
     );
 
-    debugPrint('Session joined');
+    debugPrint('✅ Session joined successfully');
+    return true;
+  } catch (e, s) {
+    debugPrint('❌ joinSession failed: $e');
+    debugPrintStack(stackTrace: s);
+    return false;
   }
+}
 
   Future changeVolumeBroadcasting() async {
     isOnSpeaker = !await agoraEngine.isSpeakerphoneEnabled();
@@ -219,23 +231,40 @@ class SessionManagementController extends ControllerMVC {
   }
 
   Future<bool> _requestRecordingPermissions() async {
-    if (kIsWeb) return true;
+    if (kIsWeb) return true; // Web doesn't need permissions
 
     if (Platform.isAndroid) {
-      final mic = await Permission.microphone.request();
-      final audio = await Permission.audio.request();
+      // Microphone permission
+      final micStatus = await Permission.microphone.request();
+      if (!micStatus.isGranted) return false;
 
-      // Android 13+
-      if (await Permission.manageExternalStorage.isDenied) {
-        await Permission.manageExternalStorage.request();
+      // Storage permissions depending on Android version
+      if (Platform.operatingSystemVersion.contains('Android 13') ||
+          Platform.operatingSystemVersion.contains('Android 14')) {
+        // Android 13+ needs READ_MEDIA_AUDIO for audio files
+        final audioStatus = await Permission.audio.request();
+        if (!audioStatus.isGranted) return false;
+      } else {
+        // Android 10-12
+        final readStatus = await Permission.storage.request();
+        final writeStatus = await Permission.storage.request();
+        if (!readStatus.isGranted || !writeStatus.isGranted) return false;
+
+        // Android 11+ may need MANAGE_EXTERNAL_STORAGE for full access
+        if (Platform.operatingSystemVersion.contains('Android 11') ||
+            Platform.operatingSystemVersion.contains('Android 12')) {
+          final manageStatus = await Permission.manageExternalStorage.status;
+          if (!manageStatus.isGranted) {
+            final result = await Permission.manageExternalStorage.request();
+            if (!result.isGranted) return false;
+          }
+        }
       }
 
-      return mic.isGranted && audio.isGranted;
+      return true;
     }
-
-    // iOS
-    final mic = await Permission.microphone.request();
-    return mic.isGranted;
+    final micStatus = await Permission.microphone.request();
+    return micStatus.isGranted;
   }
 
 // -------------------------------------------------------------

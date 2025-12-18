@@ -187,11 +187,11 @@ class HomeState extends StateMVC<HomePage> {
           if (homeCon.isOnHomePage == true) {
             //homeCon.getHostJoinedData();
             homeCon.checkHostJoinedInfoTimer =
-                        Timer.periodic(Duration(seconds: 3), (timer) async {
-                      if (homeCon.isOnHomePage == true) {
-                        homeCon.getHostJoinedData();
-                      }
-                    });
+                Timer.periodic(Duration(seconds: 3), (timer) async {
+              if (homeCon.isOnHomePage == true) {
+                homeCon.getHostJoinedData();
+              }
+            });
           }
         } else {
           showMessageAlert(
@@ -552,7 +552,7 @@ class HomeState extends StateMVC<HomePage> {
                                           await Navigator.pushNamed(
                                               context, '/UserSession');
                                           initData();
-                                          
+
                                           print("Service: $service");
                                         }
                                       }
@@ -619,8 +619,6 @@ class HomeState extends StateMVC<HomePage> {
                     ],
                   ),
                 ),
-
-               
               ),
             ),
           ),
